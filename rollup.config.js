@@ -111,6 +111,13 @@ export default [{
 		plugins: [terser()]
 	}]
 }, {
+	input: ["src/ui/content/toolbar-button.js"],
+	output: [{
+		file: "lib/single-file-toolbar-button.js",
+		format: "iife",
+		plugins: [terser()]
+	}]
+}, {
 	input: ["src/ui/content/content-ui-editor-init-web.js"],
 	output: [{
 		file: "lib/single-file-extension-editor-init.js",

@@ -37,6 +37,20 @@
 				"lib/single-file-extension-bootstrap.js",
 				"lib/single-file-infobar.js"
 			]
+		},
+		{
+			"matches": [
+				"<all_urls>"
+			],
+			"run_at": "document_end",
+			"js": [
+				"lib/single-file-toolbar-button.js"
+			],
+			"exclude_matches": [
+				"*://chrome-extension/*",
+				"*://moz-extension/*",
+				"*://extension/*"
+			]
 		}
 	],
 	"background": {

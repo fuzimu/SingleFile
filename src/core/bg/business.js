@@ -60,7 +60,8 @@ export {
 	onSaveEnd,
 	onInit,
 	onTabReplaced,
-	cancelTab as cancel
+	cancelTab as cancel,
+	onMessage
 };
 
 async function saveSelectedLinks(tab) {
@@ -373,4 +374,69 @@ function cancel(taskInfo, runNextTasks) {
 
 function mapTaskInfo(taskInfo) {
 	return { id: taskInfo.id, tabId: taskInfo.tab.id, index: taskInfo.tab.index, url: taskInfo.tab.url, title: taskInfo.tab.title, cancelled: taskInfo.cancelled, status: taskInfo.status };
+}
+
+async function onMessage(message, sender) {
+	if (message.method === "business.saveTabs") {
+		try {
+			// 如果tabs数组为空，获取当前标签页
+			let tabs = message.tabs;
+			if (!tabs || tabs.length === 0) {
+				const currentTabs = await browser.tabs.query({ currentWindow: true, active: true });
+				if (currentTabs.length === 0) {
+					throw new Error('No active tab found');
+				}
+				tabs = currentTabs;
+			}
+			
+			// 调用saveTabs函数并等待完成
+			await saveTabs(tabs, message.options || {});
+			
+			// 等待任务完成并获取下载文件路径
+			const downloadPath = await waitForDownloadComplete();
+			
+			return { 
+				success: true, 
+				downloadPath: downloadPath 
+			};
+		} catch (error) {
+			console.error('Error saving tabs:', error);
+			return { success: false, error: error.message };
+		}
+	}
+	return {};
+}
+
+// 等待下载完成并获取文件路径
+async function waitForDownloadComplete() {
+	return new Promise((resolve) => {
+		const checkInterval = setInterval(() => {
+			// 检查是否有正在进行的任务
+			const activeTasks = tasks.filter(task => task.status === TASK_PROCESSING_STATE);
+			if (activeTasks.length === 0) {
+				clearInterval(checkInterval);
+				// 获取最新的下载记录
+				browser.downloads.search({ orderBy: ["-startTime"], limit: 1 })
+					.then(downloads => {
+						if (downloads.length > 0) {
+							const download = downloads[0];
+							if (download.state === 'complete') {
+								resolve(download.filename);
+							} else {
+								resolve(null);
+							}
+						} else {
+							resolve(null);
+						}
+					})
+					.catch(() => resolve(null));
+			}
+		}, 100);
+		
+		// 设置超时，避免无限等待
+		setTimeout(() => {
+			clearInterval(checkInterval);
+			resolve(null);
+		}, 30000); // 30秒超时
+	});
 }
